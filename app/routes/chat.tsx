@@ -1,10 +1,16 @@
 import type { Route } from './+types/chat'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
-import { Form } from 'react-router'
+import { Form, useNavigation } from 'react-router'
+import { useEffect, useRef } from 'react'
+import type { Tables } from '~/lib/database.types'
 
 type Room = {
   id: string
   name: string
+}
+
+type Message = Pick<Tables<'messages'>, 'id' | 'content' | 'created_at'> & {
+  users: { username: string }[] | null
 }
 
 export function meta({}: Route.MetaArgs) {
@@ -17,18 +23,32 @@ export function meta({}: Route.MetaArgs) {
 export async function loader() {
   const supabase = createSupabaseServerClient()
 
-  const { data: rooms, error } = await supabase.from('rooms').select('*')
+  const { data: rooms } = await supabase.from('rooms').select('*')
 
-  console.log('rooms:', rooms)
-  console.log('error:', error)
+  const { data: messages } = await supabase
+    .from('messages')
+    .select(
+      `
+        id,
+        content,
+        created_at,
+        users (
+          username
+        )
+      `,
+    )
+    .order('created_at', { ascending: true })
 
-  return { rooms }
+  return {
+    rooms,
+    messages: messages as Message[] | null,
+  }
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData()
 
-  const content = formData.get('content')
+  const content = formData.get('content') as string
 
   const supabase = createSupabaseServerClient()
 
@@ -47,7 +67,17 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ChatPage({ loaderData }: Route.ComponentProps) {
-  const { rooms } = loaderData
+  const { rooms, messages } = loaderData
+  const formRef = useRef<HTMLFormElement>(null)
+  const navigation = useNavigation()
+
+  useEffect(() => {
+    if (navigation.state === 'idle') {
+      formRef.current?.reset()
+    }
+  }, [navigation.state])
+
+  const isSubmitting = navigation.state === 'submitting'
 
   return (
     <div className="flex h-screen">
@@ -67,15 +97,15 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
         {/* メッセージ一覧 */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="space-y-4">
-            <div>
-              <span className="font-bold">Alice</span>
-              <p>Hello 👋</p>
-            </div>
+            {messages?.map((message: Message) => (
+              <div key={message.id}>
+                <span className="font-bold">
+                  {message.users?.[0]?.username ?? 'user'}
+                </span>
 
-            <div>
-              <span className="font-bold">Bob</span>
-              <p>Hi there</p>
-            </div>
+                <p>{message.content}</p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -91,8 +121,9 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
             <button
               type="submit"
               className="px-4 py-2 bg-black text-white rounded-lg"
+              disabled={isSubmitting}
             >
-              Send
+              {isSubmitting ? 'Sending...' : 'Send'}
             </button>
           </Form>
         </div>
