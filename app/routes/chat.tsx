@@ -111,7 +111,7 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
 
         {/* 入力 */}
         <div className="border-t p-4">
-          <Form method="post" className="flex gap-2">
+          <Form ref={formRef} method="post" className="flex gap-2">
             <input
               name="content"
               className="flex-1 border rounded-lg px-4 py-2"
