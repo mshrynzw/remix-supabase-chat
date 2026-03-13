@@ -1,13 +1,20 @@
-import type { Route } from "./+types/home";
-import { Welcome } from "../welcome/welcome";
+import type { Route } from './+types/home'
+import { Button } from '~/components/ui/button'
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "New React Router App" },
-    { name: "description", content: "Welcome to React Router!" },
-  ];
+    { title: 'Supabase Chat App' },
+    {
+      name: 'description',
+      content: 'Realtime chat with Supabase and React Router',
+    },
+  ]
 }
 
 export default function Home() {
-  return <div className="text-3xl font-bold p-10">Supabase Chat App 🚀</div>;
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <Button>チャットを開始</Button>
+    </div>
+  )
 }
