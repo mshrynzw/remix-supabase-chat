@@ -1,8 +1,10 @@
 import type { Route } from './+types/chat'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
 import { Form, useNavigation } from 'react-router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Tables } from '~/lib/database.types'
+import { createSupabaseBrowserClient } from '~/lib/supabase/browser'
+import type { RealtimePostgresInsertPayload } from '@supabase/supabase-js'
 
 type Room = {
   id: string
@@ -68,8 +70,40 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function ChatPage({ loaderData }: Route.ComponentProps) {
   const { rooms, messages } = loaderData
+  const [realtimeMessages, setRealtimeMessages] = useState<Message[]>(
+    messages ?? [],
+  )
   const formRef = useRef<HTMLFormElement>(null)
   const navigation = useNavigation()
+
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+
+    const channel = supabase
+      .channel('messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload: RealtimePostgresInsertPayload<Tables<'messages'>>) => {
+          setRealtimeMessages((prev) => [
+            ...prev,
+            {
+              ...payload.new,
+              users: [{ username: 'user' }],
+            },
+          ])
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
 
   useEffect(() => {
     if (navigation.state === 'idle') {
@@ -104,7 +138,7 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
         {/* メッセージ一覧 */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="space-y-4">
-            {messages?.map((message: Message) => (
+            {realtimeMessages?.map((message: Message) => (
               <div key={message.id}>
                 <span className="font-bold">
                   {message.users?.[0]?.username ?? 'user'}
