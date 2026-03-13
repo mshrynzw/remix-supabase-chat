@@ -77,6 +77,13 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
     }
   }, [navigation.state])
 
+  useEffect(() => {
+    if (navigation.state === 'idle') {
+      formRef.current?.reset()
+      formRef.current?.querySelector('input')?.focus()
+    }
+  }, [navigation.state])
+
   const isSubmitting = navigation.state === 'submitting'
 
   return (
