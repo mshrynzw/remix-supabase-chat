@@ -1,5 +1,6 @@
 import type { Route } from './+types/chat'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
+import { Form } from 'react-router'
 
 type Room = {
   id: string
@@ -22,6 +23,27 @@ export async function loader() {
   console.log('error:', error)
 
   return { rooms }
+}
+
+export async function action({ request }: Route.ActionArgs) {
+  const formData = await request.formData()
+
+  const content = formData.get('content')
+
+  const supabase = createSupabaseServerClient()
+
+  console.log('content:', content)
+
+  const { data, error } = await supabase.from('messages').insert({
+    content,
+    room_id: 'ef76896a-ec4a-41a5-926a-feb8b9044493',
+    user_id: '00000000-0000-0000-0000-000000000000',
+  })
+
+  console.log('data:', data)
+  console.log('error:', error)
+
+  return null
 }
 
 export default function ChatPage({ loaderData }: Route.ComponentProps) {
@@ -59,10 +81,20 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
 
         {/* 入力 */}
         <div className="border-t p-4">
-          <input
-            className="w-full border rounded-lg px-4 py-2"
-            placeholder="Type a message..."
-          />
+          <Form method="post" className="flex gap-2">
+            <input
+              name="content"
+              className="flex-1 border rounded-lg px-4 py-2"
+              placeholder="Type a message..."
+            />
+
+            <button
+              type="submit"
+              className="px-4 py-2 bg-black text-white rounded-lg"
+            >
+              Send
+            </button>
+          </Form>
         </div>
       </main>
     </div>
