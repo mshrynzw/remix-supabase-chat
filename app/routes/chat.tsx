@@ -1,4 +1,10 @@
 import type { Route } from './+types/chat'
+import { createSupabaseServerClient } from '~/lib/supabase/server'
+
+type Room = {
+  id: string
+  name: string
+}
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -7,7 +13,20 @@ export function meta({}: Route.MetaArgs) {
   ]
 }
 
-export default function ChatPage() {
+export async function loader() {
+  const supabase = createSupabaseServerClient()
+
+  const { data: rooms, error } = await supabase.from('rooms').select('*')
+
+  console.log('rooms:', rooms)
+  console.log('error:', error)
+
+  return { rooms }
+}
+
+export default function ChatPage({ loaderData }: Route.ComponentProps) {
+  const { rooms } = loaderData
+
   return (
     <div className="flex h-screen">
       {/* ルーム一覧 */}
@@ -15,9 +34,9 @@ export default function ChatPage() {
         <h2 className="font-bold mb-4">Rooms</h2>
 
         <ul className="space-y-2">
-          <li># general</li>
-          <li># music</li>
-          <li># dev</li>
+          {rooms?.map((room: Room) => (
+            <li key={room.id}># {room.name}</li>
+          ))}
         </ul>
       </aside>
 
