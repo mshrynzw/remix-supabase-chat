@@ -1,5 +1,6 @@
 import type { Route } from './+types/home'
-import { Button } from '~/components/ui/button'
+import { useEffect } from 'react'
+import { supabase } from '~/lib/supabase/client'
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -12,9 +13,20 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
+  useEffect(() => {
+    async function test() {
+      const { data, error } = await supabase.from('rooms').select('*')
+
+      console.log('rooms', data)
+      console.log('error', error)
+    }
+
+    test()
+  }, [])
+
   return (
     <div className="flex h-screen items-center justify-center">
-      <Button>チャットを開始</Button>
+      <h1 className="text-2xl">Supabase connection test</h1>
     </div>
   )
 }
