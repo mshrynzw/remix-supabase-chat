@@ -1,6 +1,6 @@
 import type { Route } from './+types/chat.$roomId'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
-import { Form, redirect, useNavigation } from 'react-router'
+import { Form, redirect } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { Tables } from '~/lib/database.types'
 import { createSupabaseBrowserClient } from '~/lib/supabase/browser'
@@ -13,7 +13,12 @@ type Room = {
 }
 
 type Message = Pick<Tables<'messages'>, 'id' | 'content' | 'created_at'> & {
-  users: { username: string }[] | null
+  users: { username: string } | { username: string }[] | null
+}
+
+function getMessageUsername(message: Message): string {
+  const u = Array.isArray(message.users) ? message.users[0] : message.users
+  return u?.username ?? 'user'
 }
 
 export function meta({}: Route.MetaArgs) {
@@ -61,6 +66,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   }
 }
 
+const NIL_UUID = '00000000-0000-0000-0000-000000000000'
+
 export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData()
 
@@ -68,25 +75,29 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const supabase = createSupabaseServerClient(request)
 
-  console.log('content:', content)
+  // セッションをクッキーから先に読み込む（SSR の推奨パターン）
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  // ログインユーザー取得
+  if (!session?.user) {
+    throw new Error('Not authenticated')
+  }
+
+  // Auth サーバーで検証したユーザーを取得
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user || user.id === NIL_UUID) {
     throw new Error('Not authenticated')
   }
 
-  const { data, error } = await supabase.from('messages').insert({
+  await supabase.from('messages').insert({
     content,
     room_id: params.roomId,
     user_id: user.id,
   })
-
-  console.log('data:', data)
-  console.log('error:', error)
 
   return null
 }
@@ -97,7 +108,6 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
     messages ?? [],
   )
   const formRef = useRef<HTMLFormElement>(null)
-  const navigation = useNavigation()
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
@@ -112,12 +122,22 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
           table: 'messages',
           filter: `room_id=eq.${roomId}`,
         },
-        (payload: RealtimePostgresInsertPayload<Tables<'messages'>>) => {
+        async (payload: RealtimePostgresInsertPayload<Tables<'messages'>>) => {
+          const userId = payload.new.user_id
+          let username = 'user'
+          if (userId) {
+            const { data } = await supabase
+              .from('users')
+              .select('username')
+              .eq('id', userId)
+              .maybeSingle()
+            if (data?.username) username = data.username
+          }
           setRealtimeMessages((prev) => [
             ...prev,
             {
               ...payload.new,
-              users: [{ username: 'user' }],
+              users: { username },
             },
           ])
         },
@@ -128,21 +148,6 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
       supabase.removeChannel(channel)
     }
   }, [roomId])
-
-  useEffect(() => {
-    if (navigation.state === 'idle') {
-      formRef.current?.reset()
-    }
-  }, [navigation.state])
-
-  useEffect(() => {
-    if (navigation.state === 'idle') {
-      formRef.current?.reset()
-      formRef.current?.querySelector('input')?.focus()
-    }
-  }, [navigation.state])
-
-  const isSubmitting = navigation.state === 'submitting'
 
   return (
     <div className="flex h-screen">
@@ -169,7 +174,7 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
             {realtimeMessages?.map((message: Message) => (
               <div key={message.id}>
                 <span className="font-bold">
-                  {message.users?.[0]?.username ?? 'user'}
+                  {getMessageUsername(message)}
                 </span>
 
                 <p>{message.content}</p>
@@ -178,9 +183,14 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
           </div>
         </div>
 
-        {/* 入力 */}
+        {/* 入力（action を明示して通常の POST にし、クッキーが確実に送信されるようにする） */}
         <div className="border-t p-4">
-          <Form ref={formRef} method="post" className="flex gap-2">
+          <form
+            ref={formRef}
+            action={`/chat/${roomId}`}
+            method="post"
+            className="flex gap-2"
+          >
             <input
               name="content"
               className="flex-1 border rounded-lg px-4 py-2"
@@ -190,11 +200,10 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
             <button
               type="submit"
               className="px-4 py-2 bg-black text-white rounded-lg"
-              disabled={isSubmitting}
             >
-              {isSubmitting ? 'Sending...' : 'Send'}
+              Send
             </button>
-          </Form>
+          </form>
         </div>
       </main>
     </div>

@@ -1,4 +1,6 @@
-import { Form, redirect, useActionData } from 'react-router'
+import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
+import { Form, Link, redirect, useActionData } from 'react-router'
 import type { Route } from './+types/login'
 import {
   createSupabaseServerClient,
@@ -48,6 +50,7 @@ export async function action({ request }: Route.ActionArgs) {
 
 export default function LoginPage() {
   const actionData = useActionData<{ error?: string }>()
+  const [showPassword, setShowPassword] = useState(false)
 
   return (
     <div className="flex items-center justify-center h-screen">
@@ -68,17 +71,38 @@ export default function LoginPage() {
           className="border p-2 rounded"
         />
 
-        <input
-          name="password"
-          type="password"
-          placeholder="password"
-          autoComplete="current-password"
-          className="border p-2 rounded"
-        />
+        <div className="relative">
+          <input
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="password"
+            autoComplete="current-password"
+            className="border p-2 rounded w-full pr-10"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700"
+            aria-label={showPassword ? 'パスワードを隠す' : 'パスワードを表示'}
+          >
+            {showPassword ? (
+              <EyeOff size={20} />
+            ) : (
+              <Eye size={20} />
+            )}
+          </button>
+        </div>
 
         <button type="submit" className="bg-black text-white p-2 rounded">
           Login
         </button>
+
+        <p className="text-sm text-center text-gray-600">
+          アカウントをお持ちでない方は
+          <Link to="/signup" className="text-black font-medium underline ml-1">
+            新規登録
+          </Link>
+        </p>
       </Form>
     </div>
   )
