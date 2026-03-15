@@ -149,7 +149,9 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
       {/* ルーム一覧 */}
       <aside className="w-64 border-r p-4">
         <h2 className="font-bold mb-4">Rooms</h2>
-
+        <Form method="post" action="/logout">
+          <button className="text-sm text-red-500 mb-4">Logout</button>
+        </Form>
         <ul className="space-y-2">
           {rooms?.map((room: Room) => (
             <li key={room.id}>

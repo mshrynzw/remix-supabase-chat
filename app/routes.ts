@@ -4,6 +4,7 @@ export default [
   index('./routes/home.tsx'),
   route('login', './routes/login.tsx'),
   route('signup', './routes/signup.tsx'),
+  route('logout', './routes/logout.tsx'),
   route('chat', './routes/chat.tsx'),
   route('chat/:roomId', './routes/chat.$roomId.tsx'),
 ] satisfies RouteConfig
