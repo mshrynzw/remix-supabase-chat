@@ -1,6 +1,6 @@
 import type { Route } from './+types/chat'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
-import { Form, useNavigation } from 'react-router'
+import { Form, redirect, useNavigation } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { Tables } from '~/lib/database.types'
 import { createSupabaseBrowserClient } from '~/lib/supabase/browser'
@@ -25,6 +25,15 @@ export function meta({}: Route.MetaArgs) {
 
 export async function loader({ params }: Route.LoaderArgs) {
   const supabase = createSupabaseServerClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  // 未ログインならログイン画面へ
+  if (!user) {
+    throw redirect('/login')
+  }
 
   const roomId = params.roomId
 
