@@ -1,4 +1,4 @@
-import type { Route } from './+types/chat'
+import type { Route } from './+types/chat.$roomId'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
 import { Form, redirect, useNavigation } from 'react-router'
 import { useEffect, useRef, useState } from 'react'
@@ -23,8 +23,8 @@ export function meta({}: Route.MetaArgs) {
   ]
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const supabase = createSupabaseServerClient()
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const supabase = createSupabaseServerClient(request)
 
   const {
     data: { user },
@@ -55,7 +55,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     .order('created_at', { ascending: true })
 
   return {
-    rooms,
+    rooms: rooms as Room[] | null,
     messages: messages as Message[] | null,
     roomId,
   }
@@ -66,14 +66,23 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   const content = formData.get('content') as string
 
-  const supabase = createSupabaseServerClient()
+  const supabase = createSupabaseServerClient(request)
 
   console.log('content:', content)
+
+  // ログインユーザー取得
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
 
   const { data, error } = await supabase.from('messages').insert({
     content,
     room_id: params.roomId,
-    user_id: '00000000-0000-0000-0000-000000000000',
+    user_id: user.id,
   })
 
   console.log('data:', data)

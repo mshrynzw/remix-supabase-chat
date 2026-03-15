@@ -1,8 +1,8 @@
 import { redirect } from 'react-router'
 import { createSupabaseServerClient } from '~/lib/supabase/server'
 
-export async function loader() {
-  const supabase = createSupabaseServerClient()
+export async function loader({ request }: { request: Request }) {
+  const supabase = createSupabaseServerClient(request)
 
   const { data: rooms } = await supabase.from('rooms').select('id').limit(1)
 

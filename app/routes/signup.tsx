@@ -8,7 +8,7 @@ export async function action({ request }: Route.ActionArgs) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  const supabase = createSupabaseServerClient()
+  const supabase = createSupabaseServerClient(request)
 
   const { error } = await supabase.auth.signUp({
     email,
