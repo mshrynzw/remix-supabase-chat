@@ -108,6 +108,13 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
     messages ?? [],
   )
   const formRef = useRef<HTMLFormElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [realtimeMessages])
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient()
@@ -173,13 +180,13 @@ export default function ChatPage({ loaderData }: Route.ComponentProps) {
           <div className="space-y-4">
             {realtimeMessages?.map((message: Message) => (
               <div key={message.id}>
-                <span className="font-bold">
-                  {getMessageUsername(message)}
-                </span>
+                <span className="font-bold">{getMessageUsername(message)}</span>
 
                 <p>{message.content}</p>
               </div>
             ))}
+
+            <div ref={messagesEndRef} />
           </div>
         </div>
 
